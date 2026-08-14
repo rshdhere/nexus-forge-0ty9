@@ -1,3 +1,6 @@
 node_modules/
 .env
 .DS_Store
+*.exe
+/nexus-forge-0ty9
+/server
