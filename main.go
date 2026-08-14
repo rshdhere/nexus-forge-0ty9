@@ -1,10 +1,13 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"log"
 	"net/http"
 	"os"
+	"sort"
 	"sync"
 	"time"
 )
@@ -82,7 +85,7 @@ func (h *Hub) handleMessages(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		msg := Message{
-			ID:        time.Now().UTC().Format("20060102150405.000000000"),
+			ID:        newID(),
 			User:      user,
 			Text:      text,
 			CreatedAt: time.Now().UTC(),
@@ -157,6 +160,8 @@ func (h *Hub) handleStream(w http.ResponseWriter, r *http.Request) {
 	}
 
 	notify := r.Context().Done()
+	ticker := time.NewTicker(20 * time.Second)
+	defer ticker.Stop()
 	defer func() {
 		h.mu.Lock()
 		delete(h.clients, ch)
@@ -168,6 +173,9 @@ func (h *Hub) handleStream(w http.ResponseWriter, r *http.Request) {
 		select {
 		case <-notify:
 			return
+		case <-ticker.C:
+			_, _ = w.Write([]byte(": keepalive\n\n"))
+			flusher.Flush()
 		case payload, open := <-ch:
 			if !open {
 				return
@@ -205,7 +213,16 @@ func (h *Hub) onlineNamesLocked() []string {
 		}
 		names = append(names, name)
 	}
+	sort.Strings(names)
 	return names
+}
+
+func newID() string {
+	var b [8]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return time.Now().UTC().Format("20060102150405.000000000")
+	}
+	return hex.EncodeToString(b[:])
 }
 
 func eventPayload(kind string, data any) map[string]any {

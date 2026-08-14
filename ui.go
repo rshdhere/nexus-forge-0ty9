@@ -327,7 +327,10 @@ const indexHTML = `<!doctype html>
       <section class="chat" aria-label="Chat">
         <div id="messages"><p class="empty">No messages yet. Say hello.</p></div>
         <form class="composer" id="sendForm">
-          <input id="textInput" type="text" maxlength="1000" placeholder="Write a message…" autocomplete="off" disabled />
+          <div style="display:grid;gap:0.35rem">
+            <input id="textInput" type="text" maxlength="1000" placeholder="Write a message…" autocomplete="off" disabled />
+            <span id="charCount" style="font-size:0.75rem;color:var(--muted);padding-left:0.2rem">0 / 1000</span>
+          </div>
           <button type="submit" id="sendBtn" disabled>Send</button>
         </form>
       </section>
@@ -364,6 +367,10 @@ const indexHTML = `<!doctype html>
       connect();
       heartbeat();
       setInterval(heartbeat, 15000);
+    });
+
+    textInput.addEventListener("input", () => {
+      document.getElementById("charCount").textContent = textInput.value.length + " / 1000";
     });
 
     sendForm.addEventListener("submit", async (e) => {
@@ -440,8 +447,9 @@ const indexHTML = `<!doctype html>
       messagesEl.innerHTML = state.messages.map((m) => {
         const mine = m.user === state.user;
         const when = new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        const who = mine ? escapeHtml(m.user) + " (you)" : escapeHtml(m.user);
         return '<article class="msg ' + (mine ? "mine" : "theirs") + '">' +
-          '<div class="meta"><span>' + escapeHtml(m.user) + '</span><span>' + when + '</span></div>' +
+          '<div class="meta"><span>' + who + '</span><span>' + when + '</span></div>' +
           '<div class="text">' + escapeHtml(m.text) + '</div></article>';
       }).join("");
       if (stick || nearBottom) messagesEl.scrollTop = messagesEl.scrollHeight;
